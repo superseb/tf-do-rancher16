@@ -1,0 +1,70 @@
+#!/bin/bash -x
+export curlimage=appropriate/curl
+export jqimage=stedolan/jq
+export rancher_server_ip='${server_address}'
+
+if [ `command -v curl` ]; then
+  curl -sL https://releases.rancher.com/install-docker/${docker_version_agent}.sh | sh
+elif [ `command -v wget` ]; then
+  wget -qO- https://releases.rancher.com/install-docker/${docker_version_agent}.sh | sh
+fi
+
+for image in $curlimage $jqimage; do
+  until docker inspect $image > /dev/null 2>&1; do
+    docker pull $image
+    sleep 2
+  done
+done
+
+while true; do
+  docker run --rm $curlimage -sLk http://$rancher_server_ip:8080/ping && break
+  sleep 5
+done
+
+export rancher_agent_image=$(docker run --rm $curlimage -sLk "http://$rancher_server_ip:8080/v2-beta/settings/bootstrap.required.image" | docker run --rm -i $jqimage -r '.value')
+
+until docker inspect $rancher_agent_image > /dev/null 2>&1; do
+  docker pull $rancher_agent_image
+  sleep 2
+done
+
+# Take orchestrator from hostname
+# prefix-rancheragent16-cattle-0
+# prefix-rancheragent16-kubernetes-0
+orchestrator=`hostname | awk -F- '{ print $3 }'`
+
+while true; do
+  ENV_ID=$(docker run \
+    -v /tmp:/tmp \
+    --rm \
+    $curlimage \
+      -sLk \
+      "http://$rancher_server_ip:8080/v2-beta/project?name=$orchestrator" | docker run --rm -i $jqimage -r '.data[0].id')
+
+  if [[ "$ENV_ID" == 1a* ]]; then
+    break
+  else
+    sleep 5
+  fi
+done
+
+docker run \
+  -v /tmp:/tmp \
+  --rm \
+  $curlimage \
+    -sLk \
+    -X POST \
+    -H 'Content-Type: application/json' \
+    -H 'accept: application/json' \
+    -d "{\"type\":\"registrationToken\"}" \
+      "http://$rancher_server_ip:8080/v2-beta/projects/$ENV_ID/registrationtoken"
+
+RUNCMD=`docker run \
+  -v /tmp:/tmp \
+  --rm \
+  $curlimage \
+    -sLk \
+    "http://$rancher_server_ip:8080/v2-beta/projects/$ENV_ID/registrationtokens/?state=active" |
+      docker run --rm -i $jqimage -r '.data[].command' |
+      head -n1 |
+      sh`
