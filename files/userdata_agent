@@ -38,7 +38,20 @@ while true; do
   sleep 5
 done
 
-export rancher_agent_image=$(docker run --rm $curlimage -sLk "http://$rancher_server_ip:8080/v2-beta/settings/bootstrap.required.image" | docker run --rm -i $jqimage -r '.value')
+#Login
+TOKEN=$(docker run \
+  --net=host \
+  -v /tmp:/tmp \
+  --rm \
+  $curlimage \
+    -sLk \
+    -X POST \
+    -H 'Accept: application/json' \
+    -H 'Content-Type: application/json' \
+    -d "{\"code\":\"admin:${admin_password}\"}" \
+      "http://$rancher_server_ip:8080/v2-beta/token" | docker run --rm -i $jqimage -r '.jwt')
+
+export rancher_agent_image=$(docker run --rm $curlimage -H "Authorization: Bearer $TOKEN" -sLk "http://$rancher_server_ip:8080/v2-beta/settings/bootstrap.required.image" | docker run --rm -i $jqimage -r '.value')
 
 until docker inspect $rancher_agent_image > /dev/null 2>&1; do
   docker pull $rancher_agent_image
@@ -56,6 +69,7 @@ while true; do
     --rm \
     $curlimage \
       -sLk \
+      -H "Authorization: Bearer $TOKEN" \
       "http://$rancher_server_ip:8080/v2-beta/project?name=$orchestrator" | docker run --rm -i $jqimage -r '.data[0].id')
 
   if [[ "$ENV_ID" == 1a* ]]; then
@@ -71,6 +85,7 @@ docker run \
   $curlimage \
     -sLk \
     -X POST \
+    -H "Authorization: Bearer $TOKEN" \
     -H 'Content-Type: application/json' \
     -H 'accept: application/json' \
     -d "{\"type\":\"registrationToken\"}" \
@@ -81,6 +96,7 @@ RUNCMD=`docker run \
   --rm \
   $curlimage \
     -sLk \
+    -H "Authorization: Bearer $TOKEN" \
     "http://$rancher_server_ip:8080/v2-beta/projects/$ENV_ID/registrationtokens/?state=active" |
       docker run --rm -i $jqimage -r '.data[].command' |
       head -n1 |
