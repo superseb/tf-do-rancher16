@@ -67,6 +67,10 @@ variable "ssh_keys" {
   default = []
 }
 
+variable "docker_root" {
+  default = ""
+}
+
 resource "digitalocean_droplet" "rancherserver16" {
   count     = "1"
   image     = "${var.image_server}"
@@ -113,6 +117,7 @@ data "template_file" "userdata_agent" {
   vars {
     docker_version_agent = "${var.docker_version_agent}"
     server_address = "${digitalocean_droplet.rancherserver16.ipv4_address}"
+    docker_root = "${var.docker_root}"
   }
 }
 
