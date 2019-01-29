@@ -17,6 +17,9 @@ done
 
 docker run -d -e DEFAULT_CATTLE_TELEMETRY_OPT="out" --restart=unless-stopped -p 8080:8080 -v /mysql:/var/lib/mysql rancher/server:${rancher_version}
 
+# Comment line above and uncomment this one to use custom catalogs (TODO: make configurable)
+#docker run -d -e DEFAULT_CATTLE_CATALOG_URL='{"catalogs":{"community":{"url":"https://git.rancher.io/community-catalog.git","branch":"master"},"library":{"url":"https://github.com/rancher/rancher-catalog.git","branch":"v1.6-development"}}}' -e DEFAULT_CATTLE_TELEMETRY_OPT="out" --restart=unless-stopped -p 8080:8080 -v /mysql:/var/lib/mysql rancher/server:${rancher_version}
+
 while true; do
   docker run --rm --net=host $curlimage -sLk http://127.0.0.1:8080/ping && break
   sleep 5
