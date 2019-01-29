@@ -25,6 +25,32 @@ while true; do
   sleep 5
 done
 
+# Configure auth
+docker run \
+  --net=host \
+  -v /tmp:/tmp \
+  --rm \
+  $curlimage \
+    -sLk \
+    -X POST \
+    -H 'Accept: application/json' \
+    -H 'Content-Type: application/json' \
+    -d "{\"id\":null,\"type\":\"localAuthConfig\",\"baseType\":\"localAuthConfig\",\"accessMode\":\"unrestricted\",\"enabled\":true,\"name\":\"admin\",\"password\":\"${admin_password}\",\"username\":\"admin\"}" \
+      "http://127.0.0.1:8080/v2-beta/localauthconfig"
+
+TOKEN=$(docker run \
+  --net=host \
+  -v /tmp:/tmp \
+  --rm \
+  $curlimage \
+    -sLk \
+    -X POST \
+    -H 'Accept: application/json' \
+    -H 'Content-Type: application/json' \
+    -d "{\"code\":\"admin:${admin_password}\"}" \
+      "http://127.0.0.1:8080/v2-beta/token" | docker run --rm -i $jqimage -r '.jwt')
+
+
 for orchestrator in cattle kubernetes; do
 
 # lookup orchestrator template id
@@ -35,6 +61,7 @@ while true; do
     --rm \
     $curlimage \
       -sLk \
+      -H "Authorization: Bearer $TOKEN" \
         "http://127.0.0.1:8080/v2-beta/projectTemplates?name=$orchestrator" | docker run --rm -i $jqimage -r '.data[0].id')
 
   # might've received 422 InvalidReference if the templates haven't populated yet
@@ -53,6 +80,7 @@ docker run \
   $curlimage \
     -sLk \
     -X POST \
+    -H "Authorization: Bearer $TOKEN" \
     -H 'Accept: application/json' \
     -H 'Content-Type: application/json' \
     -d "{\"description\":\"$orchestrator\",\"name\":\"$orchestrator\",\"projectTemplateId\":\"$ENV_TEMPLATE_ID\",\"allowSystemRole\":false,\"members\":[],\"virtualMachine\":false,\"servicesPortRange\":null}" \
@@ -60,7 +88,7 @@ docker run \
 done
 
 # lookup default environment id
-default_env_id=$(docker run --net=host -v /tmp:/tmp --rm $curlimage -sLk "http://127.0.0.1:8080/v2-beta/project?name=Default" | docker run --rm -i $jqimage -r '.data[0].id')
+default_env_id=$(docker run --net=host -v /tmp:/tmp --rm $curlimage -H "Authorization: Bearer $TOKEN" -sLk "http://127.0.0.1:8080/v2-beta/project?name=Default" | docker run --rm -i $jqimage -r '.data[0].id')
 
 # delete default environment
 docker run \
@@ -68,6 +96,7 @@ docker run \
   --rm \
   $curlimage \
     -sLk \
+    -H "Authorization: Bearer $TOKEN" \
     -X DELETE \
     -H 'Accept: application/json' \
     -H 'Content-Type: application/json' \

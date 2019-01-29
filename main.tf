@@ -105,6 +105,7 @@ data "template_file" "userdata_server" {
   template = "${file("files/userdata_server")}"
 
   vars {
+    admin_password = "${var.admin_password}"
     docker_version_server = "${var.docker_version_server}"
     rancher_version = "${var.rancher_version}"
   }
@@ -115,6 +116,7 @@ data "template_file" "userdata_agent" {
   template = "${file("files/userdata_agent")}"
 
   vars {
+    admin_password = "${var.admin_password}"
     docker_version_agent = "${var.docker_version_agent}"
     server_address = "${digitalocean_droplet.rancherserver16.ipv4_address}"
     docker_root = "${var.docker_root}"
