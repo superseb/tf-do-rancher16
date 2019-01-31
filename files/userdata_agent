@@ -39,17 +39,25 @@ while true; do
 done
 
 #Login
-TOKEN=$(docker run \
-  --net=host \
-  -v /tmp:/tmp \
-  --rm \
-  $curlimage \
-    -sLk \
-    -X POST \
-    -H 'Accept: application/json' \
-    -H 'Content-Type: application/json' \
-    -d "{\"code\":\"admin:${admin_password}\"}" \
-      "http://$rancher_server_ip:8080/v2-beta/token" | docker run --rm -i $jqimage -r '.jwt')
+while true; do
+  TOKEN=$(docker run \
+    --net=host \
+    -v /tmp:/tmp \
+    --rm \
+    $curlimage \
+      -sLk \
+      -X POST \
+      -H 'Accept: application/json' \
+      -H 'Content-Type: application/json' \
+      -d "{\"code\":\"admin:${admin_password}\"}" \
+        "http://$rancher_server_ip:8080/v2-beta/token" | docker run --rm -i $jqimage -r '.jwt')
+
+  if [[ "x$TOKEN" != "xnull" ]]; then
+    break
+  else
+    sleep 5
+  fi
+done
 
 export rancher_agent_image=$(docker run --rm $curlimage -H "Authorization: Bearer $TOKEN" -sLk "http://$rancher_server_ip:8080/v2-beta/settings/bootstrap.required.image" | docker run --rm -i $jqimage -r '.value')
 
