@@ -3,10 +3,15 @@ export curlimage=appropriate/curl
 export jqimage=stedolan/jq
 export rancher_server_ip='${server_address}'
 
-if [ `command -v curl` ]; then
-  curl -sL https://releases.rancher.com/install-docker/${docker_version_agent}.sh | sh
-elif [ `command -v wget` ]; then
-  wget -qO- https://releases.rancher.com/install-docker/${docker_version_agent}.sh | sh
+if [ "${docker_version_agent}" == "native" ]; then
+  yum -y install docker
+  service docker start
+else
+  if [ `command -v curl` ]; then
+    curl -sL https://releases.rancher.com/install-docker/${docker_version_agent}.sh | sh
+  elif [ `command -v wget` ]; then
+    wget -qO- https://releases.rancher.com/install-docker/${docker_version_agent}.sh | sh
+  fi
 fi
 
 if [ -n "${docker_root}" ]; then
