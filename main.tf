@@ -71,6 +71,9 @@ variable "docker_root" {
   default = ""
 }
 
+data "digitalocean_account" "do-account" {
+}
+
 resource "digitalocean_droplet" "rancherserver16" {
   count     = "1"
   image     = var.image_server
@@ -79,6 +82,7 @@ resource "digitalocean_droplet" "rancherserver16" {
   size      = var.size
   user_data = data.template_file.userdata_server.rendered
   ssh_keys  = var.ssh_keys
+  tags      = [join("",["user:",replace(split("@",data.digitalocean_account.do-account.email)[0],".","-")])]
 }
 
 resource "digitalocean_droplet" "rancher16agent-cattle" {
@@ -89,6 +93,7 @@ resource "digitalocean_droplet" "rancher16agent-cattle" {
   size      = var.cattle_size
   user_data = data.template_file.userdata_agent.rendered
   ssh_keys  = var.ssh_keys
+  tags      = [join("",["user:",replace(split("@",data.digitalocean_account.do-account.email)[0],".","-")])]
 }
 
 resource "digitalocean_droplet" "rancher16agent-kubernetes" {
@@ -99,6 +104,7 @@ resource "digitalocean_droplet" "rancher16agent-kubernetes" {
   size      = var.kubernetes_size
   user_data = data.template_file.userdata_agent.rendered
   ssh_keys  = var.ssh_keys
+  tags      = [join("",["user:",replace(split("@",data.digitalocean_account.do-account.email)[0],".","-")])]
 }
 
 data "template_file" "userdata_server" {
