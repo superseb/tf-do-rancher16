@@ -1,6 +1,6 @@
 # Terraform config to launch Rancher 1.6
 
-**Note: requires Terraform v0.12**
+**Note: requires Terraform v0.13**
 
 ## Summary
 
